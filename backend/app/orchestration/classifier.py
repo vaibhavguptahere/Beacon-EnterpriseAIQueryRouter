@@ -1,24 +1,3 @@
-"""
-Hybrid intent classifier for Beacon.
-
-Architecture:
-  1. facebook/bart-large-mnli  (fast, ~150-300ms, CPU, always runs)
-     ├─ high confidence single domain → return immediately (no Ollama call)
-     ├─ out of scope high confidence  → return immediately
-     └─ ambiguous / multi-domain      → fall through to Ollama
-
-  2. Ollama beacon-router / qwen3:4b  (slow, ~3-8s, full reasoning)
-     Handles: multi-intent, clarification required, ambiguous queries.
-     Uses a simplified hand-crafted JSON schema to avoid the LLM getting
-     confused by a complex Pydantic-generated schema.
-
-Bugs fixed vs previous implementation:
-  - needs_clarification no longer required in LLM output (auto-derived from status)
-  - multi_intent no longer crashes when LLM returns 1 intent (soft recovery)
-  - clarification_required no longer crashes when needs_clarification missing
-  - Intent names: canonical list provided in system prompt
-"""
-
 from __future__ import annotations
 
 import json

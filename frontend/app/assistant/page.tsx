@@ -164,11 +164,11 @@ export default function AssistantPage() {
     // Start thinking state
     setThinking(["Router Agent", "Classifier", "RAG Engine"]);
 
+    let currentChatId = chatId;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-
-      let currentChatId = chatId;
 
       // 1. If user is logged in, handle Chat persistence
       if (user) {
@@ -208,7 +208,8 @@ export default function AssistantPage() {
       }
 
       // 2. Fetch answer from backend
-      const res = await fetch("http://localhost:8000/api/chat", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -259,14 +260,14 @@ export default function AssistantPage() {
     } catch (err) {
       if (activeChatIdRef.current === currentChatId) {
         setThinking(null);
+        setMessages((m) => [...m, {
+          id: ++idRef.current,
+          role: "nexus",
+          text: "Failed to connect to the backend server.",
+          evidence: [],
+          agents: ["Router Agent"]
+        }]);
       }
-      setMessages((m) => [...m, {
-        id: ++idRef.current,
-        role: "nexus",
-        text: "Failed to connect to the backend server.",
-        evidence: [],
-        agents: ["Router Agent"]
-      }]);
     }
   };
 
