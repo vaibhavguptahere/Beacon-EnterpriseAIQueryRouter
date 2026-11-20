@@ -1,502 +1,521 @@
-# Beacon — Enterprise AI Query Router & Chat
+# Beacon — Enterprise AI Query Router
 
-## 🏗️ Architecture Overview
+**One conversational interface for HR, IT, and Finance knowledge.**
 
-This project is built using a modern decoupled architecture, combining a responsive Next.js 15 frontend with a high-performance Python FastAPI backend, supported by local LLM orchestration and Supabase.
+Beacon is an AI-powered enterprise assistant designed to help employees find answers across different organizational knowledge bases through a single chat interface. Instead of searching through multiple documents, policies, and departmental resources manually, users can ask questions in natural language and receive context-aware answers grounded in relevant enterprise documents.
 
-### 🎨 Frontend (UI & Client)
-- **Framework**: Next.js 15 (App Router), React 19
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4, Vanilla CSS (`index.css` for background gradients and noise)
-- **Animations & Graphics**: Framer Motion (page/component transitions), GSAP, `@react-three/fiber` / `@react-three/drei` (3D rendering capabilities)
-- **UI Components**: Radix UI Primitives (headless components)
-- **Auth & State**: Supabase SSR (`@supabase/ssr`, `@supabase/supabase-js`)
-- **Key Files**: 
-  - `app/auth/page.tsx` (Supabase Login/Signup)
-  - `app/assistant/page.tsx` (Chat Interface fetching from Backend)
-
-### ⚙️ Backend (API & Orchestration)
-- **Framework**: FastAPI (Python)
-- **Language**: Python 3.10+
-- **LLM Orchestration**: Ollama-based zero-shot intent classifier (`beacon-router` model).
-- **Core Libraries**: `pydantic`, `ollama`, `transformers`, `torch`, `sentencepiece`
-- **Endpoints**: 
-  - `POST /api/chat`: Receives user query, runs Ollama classification, and returns domain-specific RAG responses.
-  - `GET /api/health`: Health check endpoint.
-- **Key Directories**: 
-  - `backend/app/api/routes` (FastAPI controllers)
-  - `backend/app/orchestration` (Classification and routing logic)
-
-### 🗄️ Database (Supabase / PostgreSQL)
-- **Provider**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth (JWT, `auth.users` table)
-- **Schema**:
-  - `public.profiles`: Stores user metadata (linked to `auth.users` via trigger).
-  - `public.chats`: Stores chat session history.
-  - `public.messages`: Stores individual messages tied to a chat.
-- **Security**: Row Level Security (RLS) is strictly enforced so users can only access their own data.
-
-### 🔄 System Approach & Request Flow
-The core approach behind Beacon relies on a multi-intent, two-tier query routing system ensuring queries are directed to the correct domain-specific knowledge bases.
-
-1. **User Input:** A user enters a query on the Next.js frontend.
-2. **Backend Processing:** The query is forwarded to the FastAPI backend (`/api/chat`).
-3. **Intent Classification (Two-Tier System):**
-   - **Tier 1 (Fast Path):** A lightweight Zero-Shot Classifier analyzes the query. If it has high confidence of a single domain, it routes immediately (150-300ms).
-   - **Tier 2 (Slow Path):** If the query is ambiguous or multi-domain, it falls back to a local **Ollama** instance (`beacon-router` model) for deep reasoning (~3-8s).
-4. **Domain Agents Delegation:** The orchestrator routes the classified query to specialized Domain Agents (HR, IT, Finance). Multi-intent queries may spawn parallel requests.
-5. **Knowledge Retrieval (RAG):** The active Domain Agent converts the query to embeddings and searches the Vector Database for contextually relevant enterprise evidence.
-6. **Response Generation:** The agent compiles a prompt (Query + Context) and sends it to the LLM to form a grounded, factual answer.
-7. **Synthesis & Client Delivery:** If multiple agents were involved, a Synthesizer combines their answers. The final response, along with cited sources and confidence scores, is returned to the frontend.
+The project combines **intent classification, intelligent query routing, Retrieval-Augmented Generation (RAG), local LLM-based orchestration, and cloud-based AI services** to make enterprise information easier to access.
 
 ---
 
-# Nexus — Complete GitHub Workflow
+## ✨ Key Features
 
-## 1. First Time Only — Clone the Repository
-
-```bash
-git clone https://github.com/vaibhavguptahere/microsoft_hackathon.git
-cd microsoft_hackathon
-```
-
-Check branches:
-
-```bash
-git branch
-```
-
----
-
-## 2. Create Your Own Branch
-
-> **Never work directly on `main`.**
-
-```bash
-git checkout -b feature/your-name
-```
-
-Examples:
-
-```bash
-git checkout -b feature/vaibhav
-git checkout -b feature/nishika
-git checkout -b feature/isha
-git checkout -b feature/giri
-```
+- **Unified AI Chat Interface:** Ask questions about HR, IT, and Finance from one conversational interface.
+- **Intelligent Query Classification:** Identify the likely intent and domain of an incoming query before retrieving information.
+- **Two-Tier Classification:** Use a lightweight classification path for straightforward queries and an Ollama-based fallback for ambiguous or more complex queries.
+- **Domain-Based Routing:** Route queries to the relevant departmental knowledge base.
+- **Retrieval-Augmented Generation (RAG):** Retrieve relevant document sections and use them as context for generating answers.
+- **Hybrid Search:** Combine keyword-based and vector-based retrieval through Azure AI Search.
+- **Grounded Responses:** Generate answers using retrieved enterprise context instead of relying only on the language model's general knowledge.
+- **Source References:** Return retrieved source information alongside the generated answer.
+- **Authentication:** Use Supabase Authentication to support user login and signup.
+- **Chat Persistence:** Store chat sessions and individual messages in PostgreSQL through Supabase.
+- **Modern Interface:** Responsive Next.js interface with animations and interactive visual elements.
 
 ---
 
-## 3. Every Time You Start Working
+## 🧠 How Beacon Works
 
-First, update `main`:
-
-```bash
-git checkout main
-git pull origin main
-```
-
-Then go back to your branch:
-
-```bash
-git checkout feature/your-name
-```
-
-Bring the latest `main` changes into your branch:
-
-```bash
-git merge main
-```
-
-Now start coding.
-
-### If Nothing Was Merged Into `main`
-
-That's completely fine.
-
-```bash
-git pull origin main
-```
-
-You may see:
+Beacon follows a classification → routing → retrieval → generation workflow.
 
 ```text
-Already up to date.
+                  USER
+                    |
+                    v
+          Next.js Chat Interface
+                    |
+                    v
+              FastAPI Backend
+                    |
+                    v
+           Intent Classification
+                    |
+          +---------+----------+
+          |                    |
+          v                    v
+    Fast Classifier       Ollama Fallback
+          |             (Ambiguous Queries)
+          +---------+----------+
+                    |
+                    v
+              Query Router
+                    |
+          +---------+---------+
+          |         |         |
+          v         v         v
+         HR         IT      Finance
+          |         |         |
+          +---------+---------+
+                    |
+                    v
+            Azure AI Search
+          (Hybrid Retrieval)
+                    |
+                    v
+          Retrieved Document
+                Context
+                    |
+                    v
+          Azure OpenAI Generation
+                    |
+                    v
+          Answer + Source Details
+                    |
+                    v
+             Chat Interface
 ```
 
-Your code is safe.
+### 1. User Query
+
+The user enters a natural-language question through the Next.js chat interface.
+
+Example questions:
+
+- "How many days of annual leave can I take?"
+- "How do I reset my company VPN?"
+- "What is the reimbursement policy?"
+
+### 2. Intent Classification
+
+The FastAPI backend analyzes the incoming query to determine its intent and relevant domain.
+
+Beacon uses a two-tier classification approach:
+
+- **Fast classification path:** A lightweight classifier uses sentence embeddings and a trained classification model to identify familiar query patterns.
+- **Fallback classification path:** When a query is ambiguous or requires more contextual reasoning, the system can use a local Ollama model named `beacon-router`.
+
+The classification and routing layer also uses structured Pydantic schemas to represent routing outcomes, including single-intent, multi-intent, clarification-required, and out-of-scope cases.
+
+### 3. Query Routing
+
+Based on the classification result, the orchestration layer selects the relevant domain:
+
+- HR — employee policies and human resources information.
+- IT — technical support and IT-related documentation.
+- Finance — financial policies and related information.
+
+This separates query understanding from document retrieval and makes the system easier to extend with additional domains.
+
+### 4. Knowledge Retrieval
+
+The RAG pipeline converts the query into an embedding and searches the configured Azure AI Search index.
+
+Beacon uses hybrid retrieval, combining:
+
+- Keyword-based search.
+- Vector-based semantic search.
+
+The retrieved document sections provide relevant context for answering the user's question.
+
+### 5. Answer Generation
+
+The retrieved context is passed to Azure OpenAI for answer generation.
+
+The generation prompt is designed to keep responses grounded in the retrieved information and avoid unsupported answers.
+
+The backend returns the generated answer along with available source details to the frontend.
 
 ---
 
-## 4. Work on Your Code
+## 🤖 Models and AI Technologies
 
-Make your changes normally.
+Beacon combines local models with cloud AI services.
 
-Check what changed:
+| Component | Model / Technology | Purpose |
+|---|---|---|
+| Fast intent classification | Sentence Transformers — `all-MiniLM-L6-v2` | Convert queries into sentence embeddings |
+| Classification | Trained classification model (`intent_classifier.pkl`) | Identify likely query intent |
+| Fallback classification | BART zero-shot classification | Support classification when the fast path is insufficient |
+| Local LLM orchestration | Ollama — `beacon-router` | Handle ambiguous and complex routing decisions |
+| Embeddings | Azure OpenAI embeddings deployment | Generate embeddings for document and query retrieval |
+| Vector and keyword retrieval | Azure AI Search | Retrieve relevant enterprise document context |
+| Answer generation | Azure OpenAI deployment | Generate context-grounded responses |
 
-```bash
-git status
-```
+**Why use both local and cloud models?**
 
----
+The local Ollama model provides a self-hosted option for query classification and fallback reasoning. Azure AI services handle the embedding, search, and answer-generation components of the RAG pipeline.
 
-## 5. Save Your Work
-
-Add your changes:
-
-```bash
-git add .
-```
-
-Commit your changes:
-
-```bash
-git commit -m "Add RAG retrieval"
-```
-
-Examples:
-
-```bash
-git commit -m "Add HR agent"
-git commit -m "Create chat interface"
-git commit -m "Add document ingestion"
-git commit -m "Add 3D architecture"
-```
+This combination allows Beacon to use local orchestration alongside managed cloud AI infrastructure.
 
 ---
 
-## 6. Push Your Branch
+## 🏗️ Technology Stack
 
-### First Push
+### Frontend
 
-```bash
-git push -u origin feature/your-name
-```
+- Next.js 15 — App Router
+- React 19
+- TypeScript
+- Tailwind CSS v4
+- Vanilla CSS
+- Framer Motion
+- GSAP
+- Three.js through `@react-three/fiber` and `@react-three/drei`
+- Radix UI Primitives
+- Supabase SSR and Supabase JavaScript Client
 
-### After the First Push
+### Backend
 
-```bash
-git push
-```
+- Python 3.10+
+- FastAPI
+- Pydantic
+- Ollama
+- Transformers
+- PyTorch
+- Sentence Transformers
+- SentencePiece
 
-Your code is now available on GitHub under your branch.
+### AI and Retrieval
+
+- Azure OpenAI
+- Azure AI Search
+- Hybrid keyword and vector search
+- Retrieval-Augmented Generation (RAG)
+- Ollama local model orchestration
+
+### Database and Authentication
+
+- Supabase
+- PostgreSQL
+- Supabase Authentication
+- JWT-based authentication
+- Chat and message persistence
 
 ---
 
-## 7. Create a Pull Request
+## 📂 Project Structure
 
-After pushing your branch:
-
-### Step 1
-
-Open the GitHub repository in your browser.
-
-### Step 2
-
-You will usually see a message like:
+The repository is organized into frontend, backend, orchestration, and RAG components.
 
 ```text
-feature/your-name had recent pushes
-[Compare & pull request]
+Beacon/
+│
+├── app/
+│   ├── auth/
+│   │   └── page.tsx
+│   │
+│   └── assistant/
+│       └── page.tsx
+│
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── routes/
+│   │   │       └── chat.py
+│   │   │
+│   │   ├── orchestration/
+│   │   │   ├── classifier.py
+│   │   │   └── router.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   └── routing.py
+│   │   │
+│   │   ├── rag/
+│   │   │   ├── search.py
+│   │   │   ├── generator.py
+│   │   │   └── pipeline.py
+│   │   │
+│   │   └── models/
+│   │       └── intent_classifier.pkl
+│   │
+│   ├── ingestion/
+│   │   └── ingest.py
+│   │
+│   └── data/
+│
+├── public/
+├── package.json
+└── README.md
 ```
 
-Click **Compare & pull request**.
+*This is a simplified view of the main components; the repository may contain additional configuration, UI, and supporting files.*
 
-If you don't see it:
+---
+
+## 🚀 Run Beacon on Your Local Machine
+
+You can fork this repository and run your own local instance of Beacon. The application requires frontend and backend configuration, a Supabase project, and access to the configured Azure AI services.
+
+### Prerequisites
+
+Install the following:
+
+- Node.js and npm
+- Python 3.10 or later
+- Git
+- Ollama
+- An Ollama model named `beacon-router`, or the equivalent model configuration
+- A Supabase project
+- Azure AI Search service and search index
+- Azure OpenAI resource with the required embedding and chat deployments
+
+### 1. Fork and Clone the Repository
+
+Fork the repository using GitHub's **Fork** button.
+
+Then clone your fork:
+
+```bash
+git clone https://github.com/<your-username>/Beacon-EnterpriseAIQueryRouter.git
+
+cd Beacon-EnterpriseAIQueryRouter
+```
+
+### 2. Configure the Backend
+
+Navigate to the backend directory:
+
+```bash
+cd backend
+```
+
+Create and activate a virtual environment.
+
+**Windows:**
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install the backend dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+If your checkout does not contain a `requirements.txt`, install the dependencies listed in the backend's dependency configuration.
+
+### 3. Configure Environment Variables
+
+Create the backend environment file using the variable names expected by the application.
+
+You will need to configure the relevant credentials and deployment details for:
+
+- Azure OpenAI endpoint and API key.
+- Azure OpenAI embedding and generation deployment names.
+- Azure AI Search endpoint, API key, and index name.
+- Ollama connection settings.
+- Any other backend configuration required by the application.
+
+Never commit API keys, database credentials, or other secrets to GitHub.
+
+### 4. Set Up Ollama
+
+Install Ollama from:
+
+https://ollama.com/
+
+Start the Ollama service and make sure the configured `beacon-router` model is available locally.
+
+If you have the model definition used by this project, build it with:
+
+```bash
+ollama create beacon-router -f Modelfile
+```
+
+Start or verify the model:
+
+```bash
+ollama run beacon-router
+```
+
+The model name and Modelfile must match the configuration in the backend.
+
+### 5. Configure Supabase
+
+Create a Supabase project:
+
+https://supabase.com/
+
+Configure the frontend and backend with the appropriate Supabase project URL and keys.
+
+The application uses Supabase for authentication and PostgreSQL-backed application data, including:
+
+- `public.profiles`
+- `public.chats`
+- `public.messages`
+
+Make sure the database schema and any required authentication triggers and access policies are configured before using the application.
+
+### 6. Configure Azure AI Services
+
+Create and configure:
+
+1. An Azure AI Search service and the required search index.
+2. An Azure OpenAI resource.
+3. An embedding deployment for document and query embeddings.
+4. A chat/completion deployment for answer generation.
+
+Add the corresponding endpoint, credentials, deployment names, and index configuration to the backend environment.
+
+The RAG pipeline depends on these services. Running the frontend and FastAPI server alone is not sufficient to reproduce cloud-backed retrieval and generation.
+
+### 7. Run the Backend
+
+From the backend directory, start the FastAPI application using its configured entry point.
+
+For example, if the application entry point is `app.main:app`:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The API documentation is generally available at:
 
 ```text
-Repository
-   ↓
-Pull requests
-   ↓
-New pull request
+http://127.0.0.1:8000/docs
 ```
 
-### Step 3 — Select Branches
+Check the actual application entry point and configured port in your checkout before running the command.
 
-Make sure:
+### 8. Run the Frontend
+
+Open a second terminal and navigate to the project root:
+
+```bash
+npm install
+```
+
+Create the frontend environment file with the Supabase URL, public key, and backend API URL expected by the application.
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open:
 
 ```text
-base repository:   nexus
-base:              main
-
-compare:           feature/your-name
+http://localhost:3000
 ```
 
-It should look like:
+Create an account or sign in, then start asking questions through the assistant interface.
 
-```text
-main  ←  feature/your-name
-```
+---
 
-### Step 4 — Add Pull Request Title
+## 💬 Example Queries
+
+Once the required services and departmental documents are configured, you can try questions such as:
+
+| Domain | Example Query |
+|---|---|
+| HR | What is the annual leave policy? |
+| HR | What is the process for requesting leave? |
+| IT | How can I troubleshoot VPN connectivity? |
+| IT | What should I do if I forget my system password? |
+| Finance | What is the employee reimbursement process? |
+| Finance | Which expenses are eligible for reimbursement? |
+
+The answers depend on the documents indexed in your Azure AI Search knowledge base. These examples are illustrative; the system does not guarantee an answer unless the relevant information exists in the indexed documents.
+
+---
+
+## 📄 Document Ingestion
+
+Beacon includes a document ingestion component for preparing departmental knowledge sources for retrieval.
+
+The ingestion workflow is designed to:
+
+1. Read supported PDF documents.
+2. Extract their text.
+3. Divide the extracted content into manageable sections.
+4. Generate embeddings using the configured Azure OpenAI embedding deployment.
+5. Index the processed content in Azure AI Search.
+
+The repository includes sample HR, IT, and Finance documents under `backend/data`.
+
+To use Beacon with your own organization's information, configure the ingestion process and search index for your documents. Ensure that you have permission to process and use those documents.
+
+---
+
+## 🔐 Security and Configuration Notes
+
+- Keep API keys and service credentials in environment variables.
+- Do not commit `.env` files or secrets to a public repository.
+- Configure Supabase authentication and database access policies for your deployment.
+- Restrict access to sensitive HR, IT, and Finance documents.
+- Use appropriate Azure AI Search and Azure OpenAI access controls.
+- Do not index confidential company documents without authorization.
+
+---
+
+## 🔧 Customization and Extension
+
+Beacon is designed to support additional enterprise knowledge domains.
+
+Potential extensions include:
+
+- Adding new departmental knowledge bases.
+- Expanding intent categories and routing rules.
+- Improving multi-intent handling.
+- Adding document formats and ingestion pipelines.
+- Supporting additional embedding or language models.
+- Introducing role-based access to departmental information.
+- Adding monitoring, evaluation, and feedback mechanisms.
+
+The orchestration layer separates classification, routing, and retrieval, making these components easier to modify independently.
+
+---
+
+## 🤝 Contributing
+
+Contributions, improvements, and suggestions are welcome.
+
+If you want to contribute:
+
+1. Fork the repository.
+2. Clone your fork.
+3. Create a feature branch.
+4. Make and test your changes.
+5. Commit and push your changes.
+6. Open a Pull Request describing your contribution.
 
 Example:
 
-```text
-Add RAG Retrieval Pipeline
-```
-
-### Step 5 — Add Description
-
-Keep it simple:
-
-```markdown
-## Changes
-- Added document ingestion
-- Added text chunking
-- Added vector retrieval
-
-## Testing
-- Tested document upload
-- Tested retrieval API
-```
-
-### Step 6
-
-Click **Create pull request**.
-
----
-
-## 8. After Creating the Pull Request
-
-Do not merge your own PR immediately unless the team has agreed that you can.
-
-Ask another teammate to review your code.
-
-```text
-Your Branch
-     ↓
-Pull Request
-     ↓
-Code Review
-     ↓
-Approved
-     ↓
-Merge into main
-```
-
----
-
-## 9. If Changes Are Requested
-
-Make the requested changes on the same branch.
-
 ```bash
+git checkout -b feature/your-feature
 git add .
-git commit -m "Fix review comments"
-git push
-```
-
-Your existing Pull Request will automatically update. You do not need to create another PR.
-
----
-
-## 10. Before Your PR Gets Merged
-
-If another teammate has merged new code into `main`, update your branch:
-
-```bash
-git checkout main
-git pull origin main
-git checkout feature/your-name
-git merge main
-```
-
-Then:
-
-```bash
-git push
-```
-
-Your Pull Request will be updated.
-
----
-
-## 11. After Your PR Is Merged
-
-Once your PR is merged into `main`:
-
-```bash
-git checkout main
-git pull origin main
-```
-
-Now `main` contains your changes.
-
-For your next task, create a new branch:
-
-```bash
-git checkout -b feature/new-feature
+git commit -m "Add your feature"
+git push origin feature/your-feature
 ```
 
 ---
 
-## ⚠️ Important Team Rules
+## 👥 Team
 
-### Rule 1 — Never Code Directly on `main`
+**Beacon — Enterprise AI Query Router**
 
-❌ Don't:
-
-```bash
-git checkout main
-
-# Write code
-
-git add .
-git commit
-git push
-```
-
-✅ Always use your own branch:
-
-```bash
-git checkout -b feature/your-name
-```
-
-### Rule 2 — Pull `main` Before Starting Work
-
-Every time you start working:
-
-```bash
-git checkout main
-git pull origin main
-git checkout feature/your-name
-git merge main
-```
-
-### Rule 3 — Your Code Will Not Be Deleted
-
-Running:
-
-```bash
-git pull origin main
-```
-
-updates your local `main`. It does **not** delete your feature branch or your committed work.
-
-```text
-main
-│
-├── Team's merged code
-│
-└── feature/your-name
-      └── Your code
-```
-
-### Rule 4 — Commit Before Switching Branches
-
-If you have unfinished changes:
-
-```bash
-git add .
-git commit -m "WIP: working on router"
-```
-
-Then switch branches.
-
-### Rule 5 — One Teammate = One Feature Branch
-
-```text
-main
-│
-├── feature/vaibhav-backend
-├── feature/member2-rag
-├── feature/member3-cloud
-└── feature/member4-frontend
-```
-
-Don't work on someone else's branch.
-
-### Rule 6 — Before Creating a PR, Update Your Branch
-
-```bash
-git checkout main
-git pull origin main
-git checkout feature/your-name
-git merge main
-git push
-```
-
-Then create/update the Pull Request.
+Developed as a team project at Bennett University.
 
 ---
 
-## 🚀 Complete Workflow
+## 📌 Project Status
 
-```text
-START
-  │
-  ▼
-git checkout main
-  │
-  ▼
-git pull origin main
-  │
-  ▼
-git checkout your-branch
-  │
-  ▼
-git merge main
-  │
-  ▼
-WRITE CODE
-  │
-  ▼
-git add .
-  │
-  ▼
-git commit -m "..."
-  │
-  ▼
-git push
-  │
-  ▼
-CREATE PULL REQUEST
-  │
-  ▼
-CODE REVIEW
-  │
-  ├── Changes requested
-  │       ↓
-  │   Make changes
-  │       ↓
-  │   git push
-  │
-  ▼
-APPROVED
-  │
-  ▼
-MERGE → main
-  │
-  ▼
-git checkout main
-git pull origin main
-  │
-  ▼
-CREATE NEW BRANCH
-```
+Beacon is an evolving project focused on enterprise query understanding, domain-based routing, and document-grounded AI responses.
+
+The current implementation combines a Next.js frontend, FastAPI backend, local Ollama-based orchestration, Supabase authentication and persistence, and Azure-powered RAG services.
+
+Some advanced orchestration capabilities, such as fully parallel multi-domain retrieval and synthesized multi-agent responses, can be developed further as the project evolves.
 
 ---
 
-## ⭐ Commands to Remember
-
-```bash
-# Start work
-git checkout main
-git pull origin main
-git checkout feature/your-name
-git merge main
-
-# Work on your code
-
-# Save changes
-git add .
-git commit -m "your message"
-git push
-
-# Then create Pull Request on GitHub
-```
-
-> **Golden Rule:**
-> Pull → Update your branch → Code → Commit → Push → Pull Request → Review → Merge
+**Built to make enterprise knowledge easier to find, understand, and use.**
